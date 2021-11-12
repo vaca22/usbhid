@@ -1,5 +1,8 @@
 package com.viatom.usbhid;
 
+import static android.hardware.usb.UsbConstants.USB_DIR_IN;
+import static android.hardware.usb.UsbConstants.USB_DIR_OUT;
+import static android.hardware.usb.UsbConstants.USB_ENDPOINT_DIR_MASK;
 import static java.lang.Thread.sleep;
 
 import android.app.PendingIntent;
@@ -12,13 +15,14 @@ import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbEndpoint;
 import android.hardware.usb.UsbInterface;
 import android.hardware.usb.UsbManager;
+import android.hardware.usb.UsbRequest;
 import android.os.IBinder;
 
 import android.util.Log;
 import android.widget.Toast;
 
 
-
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 
 
@@ -91,13 +95,13 @@ public class Service_usb extends Service {
                         usbInterface=usbDevice.getInterface(0);
                         System.out.println("=======UsbInterfce0======="+usbInterface.getName());
                     }
-                    else{
-                        usbInterface=usbDevice.getInterface(0);
-                        System.out.println("=======UsbInterfce2======="+usbInterface.getName());
-                    }
+//                    else{
+//                        usbInterface=usbDevice.getInterface(0);
+//                        System.out.println("=======UsbInterfce2======="+usbInterface.getName());
+//                    }
                     //定义两个节点 1发送 0 接收
                     usbEndpoint_IN=usbInterface.getEndpoint(0);
-//                    usbEndpoint_OUT=usbInterface.getEndpoint(1);
+                    usbEndpoint_OUT=usbInterface.getEndpoint(0);
                     //连接的类 得到实例
                     usbDeviceConnection=usbManager.openDevice(usbDevice);
                     usbDeviceConnection.claimInterface(usbInterface,true);
@@ -129,16 +133,33 @@ public class Service_usb extends Service {
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
-                    byte[] bytes= {0x06, (byte)0xAA ,0x55,0x40,0x02,0x02,(byte)0xCB};
-
+                    byte[] bytes= {(byte)0x0C, (byte)0xAA, (byte)0x55 , (byte)0xFF , (byte)0x08 , (byte)0x00 , (byte)0x00 , (byte)0x00 , (byte)0x00 , (byte)0x00 , (byte)0x00 , (byte)0x00 , (byte)0xC1};
+                    byte[] bb=new byte[64];
+                    for(int k=0;k<64;k++){
+                        bb[k]=0;
+                    }
+                    for(int k=0;k<bytes.length;k++){
+                        bb[k]=bytes[k];
+                    }
                     System.out.println("=====Re====="+bytes[length-1]);
                     if (usbDeviceConnection!=null&&usbEndpoint_OUT!=null){
-                        usbDeviceConnection.bulkTransfer(usbEndpoint_OUT,bytes,length,2000);
+//                        System.out.println("=====Re====222="+bytes[length-1]);
+                        sendCommand(usbDeviceConnection,bytes);
+//                        int re=usbDeviceConnection.controlTransfer(USB_DIR_OUT,0x01,0x301,0,bb,64,1000);
+//                        Log.e("rep","sdfsd   "+re);
+//                        int re2=usbDeviceConnection.controlTransfer(USB_DIR_IN,0x01,0x301,0,bb,64,1000);
+//                        Log.e("rep","sdfsd   "+re2);
+//                        usbDeviceConnection.controlTransfer(USB_ENDPOINT_DIR_MASK,23,)
+//                        usbDeviceConnection.bulkTransfer(usbEndpoint_OUT,bb,64,2000);
                     }
                 }
 
             }
         }).start();
+    }
+
+    private void sendCommand(UsbDeviceConnection connection, byte[] buf) {
+        connection.controlTransfer(0x21, 0x09, 0x200, 0, buf, buf.length, 0);
     }
     private void usb_receiveData(){
         new Thread(new Runnable() {
@@ -148,12 +169,20 @@ public class Service_usb extends Service {
 
 
                         if (usbDeviceConnection != null && usbInterface != null) {
-
-                            if (usbDeviceConnection.bulkTransfer(usbEndpoint_IN, buffer, 8, 1000) > 0) {
-
-
-                                MainActivity.Companion.getMm().postValue(byte2hex(buffer));
+                            int maxPacketSize = usbEndpoint_IN.getMaxPacketSize();
+                            ByteBuffer bBuffer = ByteBuffer.allocate(maxPacketSize);
+                            UsbRequest request = new UsbRequest();
+                            request.initialize(usbDeviceConnection,  usbEndpoint_IN);
+                            request.queue(bBuffer, maxPacketSize);
+                            if (usbDeviceConnection.requestWait() == request) {
+                                byte[] b = bBuffer.array();
+                                MainActivity.Companion.getMm().postValue(byte2hex(b));
                             }
+//                            if (usbDeviceConnection.bulkTransfer( usbEndpoint_IN, buffer, 64, 1000) > 0) {
+//
+//
+//                                MainActivity.Companion.getMm().postValue(byte2hex(buffer));
+//                            }
                         }
                 }
             }
