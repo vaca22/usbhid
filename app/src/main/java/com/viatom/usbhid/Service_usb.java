@@ -1,5 +1,7 @@
 package com.viatom.usbhid;
 
+import static java.lang.Thread.sleep;
+
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
@@ -57,7 +59,6 @@ public class Service_usb extends Service {
         }
     }
 
-        //    usb_sendData(bytes.length+1);
 
 
     public void scanUSBDevice(){
@@ -67,7 +68,6 @@ public class Service_usb extends Service {
             return;
         }
         HashMap<String,UsbDevice> deviceList=usbManager.getDeviceList();
-        Log.e("fuckSize",""+deviceList.size());
         if (!(deviceList.isEmpty())) //获取的device列表
         {
             for (UsbDevice device: deviceList.values())
@@ -80,8 +80,8 @@ public class Service_usb extends Service {
                     ProductID=2;                   //与飞控pid vid吻合   判断usb设备为飞控
                 else ProductID=3;                  //均不匹配  判断usb设备为第三方设备
 
-                if (usbManager.hasPermission(usbDevice))//请求权限
-                {
+//                if (usbManager.hasPermission(usbDevice))//请求权限
+//                {
                     System.out.println("======拥有权限=======");
                     Permission=1;
                     int i=usbDevice.getInterfaceCount();//获取接口数量
@@ -103,12 +103,12 @@ public class Service_usb extends Service {
                     usbDeviceConnection.claimInterface(usbInterface,true);
                     usb_receiveData();
                     System.out.println("=======进入接收======"+STATE);
-                }
-                else{
-                    Permission=2;  //第一次插入  会请求临时权限
-                    //请求临时权限
-                    usbManager.requestPermission(usbDevice,intent);
-                }
+//               }
+//                else{
+////                    Permission=2;  //第一次插入  会请求临时权限
+////                    //请求临时权限
+//                    usbManager.requestPermission(usbDevice,intent);
+//                }
             }
         }
         else {
@@ -116,8 +116,6 @@ public class Service_usb extends Service {
             Toast.makeText(this, "未找到设备", Toast.LENGTH_SHORT).show();
             System.out.println("===============未找到设备==============="+ProductID);
         }
-        Log.e("fuck","ProductID"+ProductID);
-        Log.e("fuck","Permission"+Permission);
     }
 
     public byte[] data_to_send=new byte[64];      //发送数据缓存
@@ -125,16 +123,20 @@ public class Service_usb extends Service {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                byte[] bytes=new byte[length];
-                bytes[0]= (byte) length;
+                while (true){
+                    try {
+                        sleep(3000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    byte[] bytes= {0x06, (byte)0xAA ,0x55,0x40,0x02,0x02,(byte)0xCB};
 
-                for (int i=1;i<length;i++){
-                    bytes[i]=data_to_send[i-1];
+                    System.out.println("=====Re====="+bytes[length-1]);
+                    if (usbDeviceConnection!=null&&usbEndpoint_OUT!=null){
+                        usbDeviceConnection.bulkTransfer(usbEndpoint_OUT,bytes,length,2000);
+                    }
                 }
-                System.out.println("=====Re====="+bytes[length-1]);
-                if (usbDeviceConnection!=null&&usbEndpoint_OUT!=null){
-                    usbDeviceConnection.bulkTransfer(usbEndpoint_OUT,bytes,length,2000);
-                }
+
             }
         }).start();
     }
@@ -149,21 +151,15 @@ public class Service_usb extends Service {
 
                             if (usbDeviceConnection.bulkTransfer(usbEndpoint_IN, buffer, 8, 1000) > 0) {
 
-//                                if (buffer[0] > 0 && buffer[0] < 64) {
-//                                    Log.e("fuck1","fuck14");
-//                                    //System.out.println("=======Data======"+String.valueOf(buffer[0]));
-//                                    byte[] bytes=new byte[buffer[0]-1];
-//                                    for (int i=0;i<buffer[0]-1;i++)
-//                                        bytes[i]=buffer[i+1];
 
-                                    Log.e("fuck",byte2hex(buffer));
-//                                    //EventBus.getDefault().post(new EventUtil("Buffer",bytes));
-//                                }
+                                MainActivity.Companion.getMm().postValue(byte2hex(buffer));
                             }
                         }
                 }
             }
         }).start();
+
+        usb_sendData(6);
     }
     @Override
     public void onStart(Intent intent, int startId) {
