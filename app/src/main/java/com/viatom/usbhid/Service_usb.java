@@ -150,8 +150,9 @@ public class Service_usb extends Service {
                     request.initialize(usbDeviceConnection, usbEndpoint_IN);
                     request.queue(bBuffer, maxPacketSize);
                     if (usbDeviceConnection.requestWait() == request) {
-                        Log.e("sfda","sdfsdf");
+
                         byte[] b = bBuffer.array();
+                        Log.e("sfda","sdfsdf  "+b.length);
                         MainActivity.Companion.getMm().postValue(byte2hex(b));
                     }
 
