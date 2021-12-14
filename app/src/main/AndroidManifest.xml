@@ -19,6 +19,16 @@
             </intent-filter>
         </activity>
         <service android:name=".Service_usb"/>
+        <receiver
+            android:name=".LittlePuReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="jdiot.intent.action.JDIOT_TOKEN_INVALID" />
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+                <action android:name="android.hardware.usb.action.USB_DEVICE_DETACHED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

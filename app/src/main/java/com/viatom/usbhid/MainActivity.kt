@@ -15,7 +15,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         text=findViewById(R.id.text)
-        startService(Intent(this,Service_usb::class.java))
+       // startService(Intent(this,Service_usb::class.java))
         mm.observe(this,{
             text.text=it
         })
